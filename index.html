@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101513">
+  <title>Playroom - Your browser game shelf</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {
+      color-scheme: dark;
+      --ink: #f3f5ef;
+      --muted: #a0aaa2;
+      --dim: #68736c;
+      --canvas: #111318;
+      --panel: #24252d;
+      --panel-raised: #2d2e38;
+      --line: #41424d;
+      --lime: #d7f45b;
+      --coral: #ff715b;
+      --sky: #64d5e8;
+      --mono: 'DM Mono', monospace;
+      --display: 'Space Grotesk', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--display);
+      background-color: var(--canvas);
+      background-image: radial-gradient(ellipse at 86% 0%, #3b2844 0, transparent 34%),
+        linear-gradient(90deg, transparent 49px, #ffffff06 50px, transparent 51px),
+        linear-gradient(transparent 49px, #ffffff06 50px, transparent 51px);
+      background-size: auto, 50px 50px, 50px 50px;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .shell { max-width: 1440px; margin: auto; padding: 0 52px 72px; }
+    .topbar {
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+    .brand-mark {
+      width: 34px; height: 34px; display: grid; place-items: center;
+      border: 2px solid #fff9; border-radius: 8px; color: #14151b; background: var(--coral);
+      box-shadow: 3px 3px 0 #8e3f56; transform: rotate(-5deg);
+    }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .brand-name { font-size: 17px; font-weight: 700; letter-spacing: 0; }
+    .top-note { display: flex; align-items: center; gap: 9px; font: 11px var(--mono); color: var(--muted); }
+    .online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 11px #c9f36a88; }
+
+    .intro { padding: 64px 0 48px; display: flex; align-items: end; justify-content: space-between; gap: 28px; }
+    .eyebrow { margin: 0 0 15px; color: var(--lime); font: 11px var(--mono); letter-spacing: 0; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(42px, 6vw, 76px); line-height: .96; letter-spacing: 0; font-weight: 600; }
+    h1 span { color: var(--lime); }
+    .intro-copy { max-width: 340px; margin: 18px 0 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+    .add-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 48px; padding: 0 19px; border: 0; border-radius: 6px;
+      background: var(--lime); color: #17200f; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: background .18s, transform .18s;
+    }
+    .add-button:hover { background: #d7ff83; transform: translateY(-2px); }
+    .add-button svg { width: 17px; height: 17px; }
+    #fileInput { display: none; }
+
+    .library-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 16px; border-top: 1px solid var(--line); }
+    .section-title { display: flex; align-items: baseline; gap: 12px; }
+    h2 { margin: 0; font-size: 18px; font-weight: 600; }
+    .count { color: var(--dim); font: 11px var(--mono); }
+    .library-tools { display: flex; align-items: center; gap: 14px; }
+    .storage-label { display: flex; align-items: center; gap: 7px; color: var(--muted); font: 10px var(--mono); text-transform: uppercase; }
+    .storage-label svg { width: 14px; height: 14px; color: var(--lime); }
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 12px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--dim); pointer-events: none; }
+    .search {
+      width: 205px; height: 37px; padding: 0 12px 0 36px;
+      border: 1px solid var(--line); border-radius: 5px; outline: 0;
+      color: var(--ink); background: #111815; font-size: 12px;
+    }
+    .search:focus { border-color: #708b4e; }
+    .search::placeholder { color: var(--dim); }
+
+    .drop-zone { border: 1px dashed #62616e; border-radius: 8px; background: #191a21d9; transition: border-color .2s, background .2s; }
+    .drop-zone.dragging { border-color: var(--lime); background: #c9f36a12; }
+    .game-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; padding: 20px; }
+    .game-card {
+      min-width: 0; overflow: hidden; border: 2px solid #4a4b57; border-radius: 12px 12px 18px 18px;
+      background: linear-gradient(145deg, #30313b, #1d1e25 72%);
+      box-shadow: inset 0 1px #ffffff18, 0 5px 0 #111217, 0 9px 18px #0005;
+      animation: rise .35s both;
+    }
+    .game-card:hover { border-color: var(--cabinet-accent); transform: translateY(-4px); box-shadow: inset 0 1px #ffffff18, 0 6px 0 #111217, 0 13px 22px #0008; }
+    @keyframes rise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+    .cover {
+      position: relative; height: 166px; display: grid; place-items: center; overflow: hidden;
+      margin: 9px 9px 0; border: 8px solid #17181e; border-radius: 13px 13px 9px 9px;
+      background: var(--cover); box-shadow: inset 0 0 0 1px #ffffff70, 0 0 0 1px #ffffff1c;
+    }
+    .cover::before {
+      content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: repeating-linear-gradient(0deg, #10111800 0 3px, #10111838 4px 5px),
+        linear-gradient(120deg, #ffffff20, transparent 44%);
+    }
+    .cover::after { content: ''; position: absolute; inset: 0; opacity: .34; background-image: radial-gradient(#fff 0.7px, transparent 0.8px); background-size: 5px 5px; mix-blend-mode: soft-light; }
+    .cover-index { position: absolute; z-index: 2; left: 9px; top: 8px; padding: 4px 6px; border: 1px solid #ffffff6b; border-radius: 3px; color: white; background: #10111875; font: 9px var(--mono); }
+    .cover-symbol { position: relative; z-index: 2; display: grid; place-items: center; width: 68px; height: 68px; border: 2px solid #fff; border-radius: 15px; color: white; background: #11131840; box-shadow: 4px 4px 0 #11131875, 0 0 22px #ffffff40; font-size: 30px; font-weight: 600; transform: rotate(-6deg); }
+    .cover-symbol span { text-shadow: 0 2px #11131888; }
+    .card-body { padding: 13px 13px 11px; }
+    .game-title { overflow: hidden; margin: 0; color: #fff; font-size: 15px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px #000; }
+    .game-file { overflow: hidden; margin: 4px 0 12px; color: #a4a4b0; font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+    .card-actions { display: flex; align-items: center; justify-content: space-between; }
+    .play-button { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 11px; border: 1px solid #efff9c; border-radius: 5px; background: var(--cabinet-accent); box-shadow: 0 3px 0 color-mix(in srgb, var(--cabinet-accent), #000 45%); color: #171820; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+    .play-button:hover { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--cabinet-accent), #000 45%); }
+    .play-button svg { width: 13px; height: 13px; }
+    .remove-button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #484954; border-radius: 50%; background: #191a21; color: #a4a4b0; cursor: pointer; }
+    .remove-button:hover { border-color: #5e3934; color: var(--coral); background: #ff765f0b; }
+    .remove-button svg { width: 15px; height: 15px; }
+    .empty-state { min-height: 310px; display: grid; place-items: center; padding: 48px 24px; text-align: center; }
+    .empty-inner { max-width: 400px; }
+    .empty-icon { width: 54px; height: 54px; display: grid; place-items: center; margin: 0 auto 17px; border: 1px solid #485b43; border-radius: 16px; color: var(--lime); background: #c9f36a0b; transform: rotate(-5deg); }
+    .empty-icon svg { width: 24px; height: 24px; }
+    .empty-state h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
+    .empty-state p { margin: 0 auto 21px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .empty-state .add-button { min-height: 40px; font-size: 12px; }
+    .empty-state .add-button svg { width: 15px; height: 15px; }
+    .empty-hint { display: block; margin-top: 14px; color: var(--dim); font: 10px var(--mono); }
+    .no-results { padding: 60px 20px; color: var(--muted); text-align: center; font-size: 13px; }
+    .toast { position: fixed; left: 50%; bottom: 24px; z-index: 5; padding: 12px 17px; border: 1px solid #536447; border-radius: 5px; background: #202a22; color: var(--ink); font-size: 12px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: .2s; }
+    .toast.visible { transform: translate(-50%, 0); opacity: 1; }
+
+    .player { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; background: #090c0a; }
+    .player.open { display: flex; animation: player-in .2s both; }
+    @keyframes player-in { from { opacity: 0; } to { opacity: 1; } }
+    .player-bar { height: 58px; flex: 0 0 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #27312a; background: #111713; }
+    .player-info { min-width: 0; display: flex; align-items: center; gap: 12px; }
+    .player-back, .fullscreen-button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+    .player-back:hover, .fullscreen-button:hover { color: var(--ink); border-color: #52634f; }
+    .player-back svg, .fullscreen-button svg { width: 16px; height: 16px; }
+    .player-title { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .player-tag { color: var(--dim); font: 10px var(--mono); }
+    .player-frame-wrap { min-height: 0; flex: 1; display: grid; place-items: center; padding: 18px; }
+    #gameFrame { width: 100%; height: 100%; border: 0; border-radius: 3px; background: white; }
+    .player-error { display: none; max-width: 520px; padding: 30px; color: #f5f5f5; font: 13px/1.6 var(--mono); text-align: center; }
+
+    @media (max-width: 900px) {
+      .shell { padding-right: 28px; padding-left: 28px; }
+      .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .intro { padding-top: 54px; }
+    }
+    @media (max-width: 650px) {
+      .shell { padding: 0 18px 48px; }
+      .topbar { height: 66px; }
+      .top-note { font-size: 9px; }
+      .intro { display: block; padding: 43px 0 35px; }
+      h1 { font-size: 54px; }
+      .intro-copy { max-width: 300px; margin-top: 13px; }
+      .intro .add-button { margin-top: 21px; }
+      .library-head { align-items: flex-start; gap: 14px; }
+      .library-tools { align-items: flex-end; flex-direction: column-reverse; gap: 9px; }
+      .storage-label { font-size: 9px; }
+      .search { width: min(185px, 48vw); }
+      .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
+      .cover { height: 120px; }
+      .card-body { padding: 11px; }
+      .game-title { font-size: 13px; }
+      .game-file { font-size: 9px; }
+      .player-bar { height: 54px; flex-basis: 54px; padding: 0 11px; }
+      .player-tag { display: none; }
+      .player-frame-wrap { padding: 6px; }
+    }
+    @media (max-width: 390px) {
+      .game-grid { grid-template-columns: 1fr; }
+      .cover { height: 145px; }
+      .library-head { flex-wrap: wrap; }
+      .library-tools { width: 100%; align-items: center; flex-direction: row; justify-content: space-between; }
+      .search { width: 175px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Playroom home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5 11 7-11 7z"/></svg></span>
+        <span class="brand-name">playroom</span>
+      </a>
+      <div class="top-note"><span class="online-dot"></span> INSERT HTML · PRESS PLAY</div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">Your browser arcade</p>
+          <h1 id="pageTitle">Pick a game.<br><span>Press play.</span></h1>
+          <p class="intro-copy">Give every HTML game its own cabinet. Drop your games on the floor, line them up, and fire one up.</p>
+        </div>
+        <button class="add-button" id="addButton" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Add a game
+        </button>
+        <input id="fileInput" type="file" accept=".html,.htm,text/html" multiple>
+      </section>
+
+      <section aria-labelledby="libraryTitle">
+        <div class="library-head">
+          <div class="section-title">
+            <h2 id="libraryTitle">Game cabinets</h2>
+            <span class="count" id="gameCount">0 GAMES</span>
+          </div>
+          <div class="library-tools">
+            <span class="storage-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg> Saved on this device</span>
+            <label class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+              <input class="search" id="searchInput" type="search" placeholder="Find a game" aria-label="Find a game">
+            </label>
+          </div>
+        </div>
+        <div class="drop-zone" id="dropZone">
+          <div id="gameGrid" class="game-grid" aria-live="polite"></div>
+          <div id="emptyState" class="empty-state" hidden>
+            <div class="empty-inner">
+              <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.2a2 2 0 0 1-3.3 1l-2.1-1.8h-4.8l-2.1 1.8a2 2 0 0 1-3.3-1l-1-3.2A4 4 0 0 1 7 8Z"/><path d="M8 11v4m-2-2h4m6-1h.01M18 14h.01"/></svg></div>
+              <h3 id="emptyTitle">The arcade is quiet.</h3>
+              <p id="emptyCopy">Add an HTML game and it gets its own cabinet right here. Your collection stays saved in this browser.</p>
+              <button class="add-button" id="emptyAddButton" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Choose HTML files</button>
+              <span class="empty-hint">.HTML FILES ONLY · STORED IN THIS BROWSER</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="player" id="player" role="dialog" aria-modal="true" aria-label="Game player">
+    <div class="player-bar">
+      <div class="player-info">
+        <button class="player-back" id="closePlayer" type="button" title="Back to shelf" aria-label="Back to shelf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6M9 12h12"/></svg></button>
+        <span class="player-title" id="playerTitle">Game</span>
+        <span class="player-tag">PLAYING LOCALLY</span>
+      </div>
+      <button class="fullscreen-button" id="fullscreenButton" type="button" title="Fullscreen" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg></button>
+    </div>
+    <div class="player-frame-wrap">
+      <iframe id="gameFrame" title="Game content" sandbox="allow-scripts allow-forms allow-pointer-lock" allowfullscreen></iframe>
+      <div class="player-error" id="playerError">This game could not be opened. Try importing the HTML file again.</div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const databaseName = 'playroom-library';
+      const databaseVersion = 1;
+      const colors = [
+        'linear-gradient(135deg,#ff715b,#a83357)',
+        'linear-gradient(135deg,#53d5a5,#237d73)',
+        'linear-gradient(135deg,#5cc9ed,#3e5fb5)',
+        'linear-gradient(135deg,#ffc857,#ef7045)',
+        'linear-gradient(135deg,#c981ff,#7654c5)',
+        'linear-gradient(135deg,#ff8cb4,#bd4f78)',
+        'linear-gradient(135deg,#d7f45b,#56a85a)',
+        'linear-gradient(135deg,#52ded5,#287e9a)'
+      ];
+      const accents = ['#ffb44c', '#66e0ad', '#67d8f2', '#ffd45c', '#cf9aff', '#ff91ad', '#d7f45b', '#64e6df'];
+      const symbols = ['✳', '↗', '◈', '✦', '⌁', '✺', '◉', '△'];
+      const fileInput = document.querySelector('#fileInput');
+      const addButton = document.querySelector('#addButton');
+      const emptyAddButton = document.querySelector('#emptyAddButton');
+      const gameGrid = document.querySelector('#gameGrid');
+      const emptyState = document.querySelector('#emptyState');
+      const searchInput = document.querySelector('#searchInput');
+      const dropZone = document.querySelector('#dropZone');
+      const gameCount = document.querySelector('#gameCount');
+      const player = document.querySelector('#player');
+      const gameFrame = document.querySelector('#gameFrame');
+      const playerTitle = document.querySelector('#playerTitle');
+      const toast = document.querySelector('#toast');
+      let database;
+      let games = [];
+      let toastTimer;
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(databaseName, databaseVersion);
+          request.onupgradeneeded = () => request.result.createObjectStore('games', { keyPath: 'id' });
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function storeGame(game, operation = 'put') {
+        return new Promise((resolve, reject) => {
+          const transaction = database.transaction('games', 'readwrite');
+          const request = transaction.objectStore('games')[operation](game);
+          transaction.oncomplete = () => resolve(request.result);
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error);
+        });
+      }
+
+      function loadGames() {
+        return new Promise((resolve, reject) => {
+          const request = database.transaction('games').objectStore('games').getAll();
+          request.onsuccess = () => resolve(request.result.sort((a, b) => b.addedAt - a.addedAt));
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);
+      }
+
+      function safeTitle(fileName, html) {
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const title = parsed.querySelector('title')?.textContent?.trim();
+        return title || fileName.replace(/\.html?$/i, '').replace(/[_-]+/g, ' ').trim() || 'Untitled game';
+      }
+
+      async function importFiles(fileList) {
+        const files = Array.from(fileList).filter(file => /\.html?$/i.test(file.name) || file.type === 'text/html');
+        if (!files.length) {
+          showToast('Choose an .html or .htm game file.');
+          return;
+        }
+        let imported = 0;
+        for (const file of files) {
+          try {
+            const html = await file.text();
+            const game = {
+              id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              name: safeTitle(file.name, html),
+              fileName: file.name,
+              html,
+              addedAt: Date.now() + imported
+            };
+            await storeGame(game);
+            imported += 1;
+          } catch (error) {
+            console.error('Could not save game:', error);
+          }
+        }
+        games = await loadGames();
+        renderGames();
+        showToast(imported === 1 ? 'Game added to your shelf.' : `${imported} games added to your shelf.`);
+      }
+
+      function createCard(game, index) {
+        const card = document.createElement('article');
+        card.className = 'game-card';
+        card.style.animationDelay = `${Math.min(index, 8) * 45}ms`;
+        card.style.setProperty('--cabinet-accent', accents[index % accents.length]);
+
+        const cover = document.createElement('div');
+        cover.className = 'cover';
+        cover.style.setProperty('--cover', colors[index % colors.length]);
+
+        const serial = document.createElement('span');
+        serial.className = 'cover-index';
+        serial.textContent = `NO. ${String(index + 1).padStart(2, '0')}`;
+        const symbol = document.createElement('span');
+        symbol.className = 'cover-symbol';
+        const symbolText = document.createElement('span');
+        symbolText.textContent = symbols[index % symbols.length];
+        symbol.append(symbolText);
+        cover.append(serial, symbol);
+
+        const body = document.createElement('div');
+        body.className = 'card-body';
+        const title = document.createElement('h3');
+        title.className = 'game-title';
+        title.textContent = game.name;
+        const fileName = document.createElement('p');
+        fileName.className = 'game-file';
+        fileName.textContent = game.fileName;
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+        const play = document.createElement('button');
+        play.className = 'play-button';
+        play.type = 'button';
+        play.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>Play game';
+        play.addEventListener('click', () => launchGame(game));
+        const remove = document.createElement('button');
+        remove.className = 'remove-button';
+        remove.type = 'button';
+        remove.title = `Remove ${game.name}`;
+        remove.setAttribute('aria-label', `Remove ${game.name}`);
+        remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"/></svg>';
+        remove.addEventListener('click', () => removeGame(game));
+        actions.append(play, remove);
+        body.append(title, fileName, actions);
+        card.append(cover, body);
+        return card;
+      }
+
+      function renderGames() {
+        const query = searchInput.value.trim().toLowerCase();
+        const visibleGames = games.filter(game => `${game.name} ${game.fileName}`.toLowerCase().includes(query));
+        gameCount.textContent = `${games.length} ${games.length === 1 ? 'GAME' : 'GAMES'}`;
+        gameGrid.replaceChildren();
+        const isEmpty = games.length === 0;
+        emptyState.hidden = !isEmpty;
+        gameGrid.hidden = isEmpty || visibleGames.length === 0;
+        document.querySelector('#emptyTitle').textContent = query ? 'No games found.' : 'Your shelf is waiting.';
+        document.querySelector('#emptyCopy').textContent = query
+          ? 'Try another search, or add a new game to your shelf.'
+          : 'Drop in a standalone HTML game and it will be ready to play whenever you come back.';
+        if (!isEmpty && visibleGames.length === 0) {
+          const noResults = document.createElement('div');
+          noResults.className = 'no-results';
+          noResults.textContent = 'No games match that search.';
+          gameGrid.append(noResults);
+          gameGrid.hidden = false;
+        }
+        visibleGames.forEach((game, index) => gameGrid.append(createCard(game, index)));
+      }
+
+      function launchGame(game) {
+        playerTitle.textContent = game.name;
+        gameFrame.srcdoc = game.html;
+        player.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        document.querySelector('#closePlayer').focus();
+      }
+
+      function closePlayer() {
+        player.classList.remove('open');
+        gameFrame.srcdoc = '';
+        document.body.style.overflow = '';
+      }
+
+      async function removeGame(game) {
+        await storeGame(game, 'delete');
+        games = games.filter(item => item.id !== game.id);
+        renderGames();
+        showToast('Game removed from your shelf.');
+      }
+
+      addButton.addEventListener('click', () => fileInput.click());
+      emptyAddButton.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async event => {
+        await importFiles(event.target.files);
+        event.target.value = '';
+      });
+      searchInput.addEventListener('input', renderGames);
+      document.querySelector('#closePlayer').addEventListener('click', closePlayer);
+      document.querySelector('#fullscreenButton').addEventListener('click', async () => {
+        try {
+          if (document.fullscreenElement) await document.exitFullscreen();
+          else await gameFrame.requestFullscreen();
+        } catch { showToast('Fullscreen is not available in this browser.'); }
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && player.classList.contains('open') && !document.fullscreenElement) closePlayer();
+      });
+      for (const eventName of ['dragenter', 'dragover']) {
+        dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          dropZone.classList.add('dragging');
+        });
+      }
+      for (const eventName of ['dragleave', 'drop']) {
+        dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          dropZone.classList.remove('dragging');
+        });
+      }
+      dropZone.addEventListener('drop', event => importFiles(event.dataTransfer.files));
+
+      openDatabase().then(async openedDatabase => {
+        database = openedDatabase;
+        games = await loadGames();
+        renderGames();
+      }).catch(error => {
+        console.error('Could not open the local game library:', error);
+        document.querySelector('#emptyTitle').textContent = 'Local storage is unavailable.';
+        document.querySelector('#emptyCopy').textContent = 'Try opening this page in a current browser with local site storage enabled.';
+        emptyAddButton.hidden = true;
+        document.querySelector('.empty-hint').hidden = true;
+        emptyState.hidden = false;
+      });
+    })();
+  </script>
+</body>
+</html>
